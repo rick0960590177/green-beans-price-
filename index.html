@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>全球生豆即時行情與市場分析 | Arabica & Robusta Tracker</title>
+    <title>全球與越南生豆即時行情 | Arabica & Robusta Live Tracker</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -39,16 +39,6 @@
         body {
             font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
         }
-        .glow-green { box-shadow: 0 0 15px rgba(34, 197, 94, 0.2); }
-        .glow-red { box-shadow: 0 0 15px rgba(239, 68, 68, 0.2); }
-        .pulse-light {
-            animation: pulse-border 2s infinite;
-        }
-        @keyframes pulse-border {
-            0% { border-color: rgba(188, 127, 63, 0.3); }
-            50% { border-color: rgba(188, 127, 63, 0.8); }
-            100% { border-color: rgba(188, 127, 63, 0.3); }
-        }
     </style>
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col antialiased selection:bg-coffee-500 selection:text-white">
@@ -58,11 +48,11 @@
         <div class="flex items-center space-x-6">
             <span class="flex items-center text-emerald-400 font-semibold">
                 <span class="w-2 h-2 rounded-full bg-emerald-500 animate-ping mr-2"></span>
-                國際期貨市場連線中 (ICE / LIFFE)
+                國際期貨行情連線中 (ICE / LIFFE)
             </span>
             <span class="text-slate-400">USD/TWD 匯率: <span id="usdTwdRate" class="text-slate-200 font-mono">32.15</span></span>
-            <span class="text-slate-400">巴西(Arabica) 產季狀態: <span class="text-amber-400 font-medium">採收季末期 / 關注花期天氣</span></span>
-            <span class="text-slate-400">越南(Robusta) 產季狀態: <span class="text-emerald-400 font-medium">主要供給期</span></span>
+            <span class="text-slate-400">USD/VND 匯率: <span id="usdVndRate" class="text-slate-200 font-mono">25,450</span></span>
+            <span class="text-slate-400">越南產區現貨: <span class="text-amber-400 font-medium">中部高地 (Dak Lak/Lam Dong) 價格穩定</span></span>
         </div>
         <div class="text-slate-400 hidden md:block">
             最後更新時間: <span id="lastUpdateClock" class="font-mono text-slate-300">--:--:--</span>
@@ -74,13 +64,13 @@
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
             <div class="flex items-center space-x-3">
                 <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-coffee-700 to-amber-600 flex items-center justify-center text-white shadow-lg shadow-coffee-900/50">
-                    <i class="fa-solid me-0 fa-mug-hot text-xl"></i>
+                    <i class="fa-solid fa-mug-hot text-xl"></i>
                 </div>
                 <div>
                     <h1 class="font-bold text-lg leading-tight bg-clip-text text-transparent bg-gradient-to-r from-amber-200 via-coffee-300 to-amber-500">
                         BeanMarket Live
                     </h1>
-                    <p class="text-[10px] text-slate-400">全球生豆價格即時監控與智慧分析</p>
+                    <p class="text-[10px] text-slate-400">全球與越南生豆行情即時監控</p>
                 </div>
             </div>
 
@@ -88,11 +78,11 @@
             <div class="flex items-center space-x-3">
                 <button id="refreshBtn" onclick="triggerManualUpdate()" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-medium text-slate-300 transition flex items-center space-x-2">
                     <i id="refreshIcon" class="fa-solid fa-rotate"></i>
-                    <span class="hidden sm:inline">重新整理</span>
+                    <span class="hidden sm:inline">更新期貨數據</span>
                 </button>
-                <button onclick="openAiModal()" class="px-3 py-1.5 rounded-lg bg-gradient-to-r from-coffee-600 to-amber-600 hover:from-coffee-500 hover:to-amber-500 text-xs font-semibold text-white shadow-md shadow-coffee-950/50 transition flex items-center space-x-2 border border-amber-500/30">
-                    <i class="fa-solid fa-wand-magic-sparkles text-amber-300"></i>
-                    <span>AI 市場即時簡報</span>
+                <button onclick="openVnSearchModal()" class="px-3 py-1.5 rounded-lg bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-xs font-semibold text-white shadow-md transition flex items-center space-x-2 border border-emerald-500/30">
+                    <i class="fa-solid fa-magnifying-glass-dollar text-emerald-200"></i>
+                    <span>搜尋越南現貨價格(規格/數量)</span>
                 </button>
             </div>
         </div>
@@ -106,112 +96,120 @@
 
             <!-- Arabica Card -->
             <div class="bg-slate-900 rounded-2xl border border-slate-800 p-5 relative overflow-hidden transition-all duration-300 hover:border-amber-600/50 group">
-                <div class="absolute -right-6 -bottom-6 text-slate-800/20 group-hover:text-amber-600/10 transition-colors pointer-events-none">
-                    <i class="fa-solid fa-seedling text-9xl"></i>
-                </div>
                 <div class="flex items-center justify-between mb-3">
                     <div class="flex items-center space-x-2">
                         <span class="w-3 h-3 rounded-full bg-amber-500"></span>
                         <h2 class="font-bold text-slate-200">阿拉比卡 (Arabica)</h2>
                     </div>
-                    <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20">ICE: KC (Coffee C)</span>
+                    <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20">ICE: KC</span>
                 </div>
 
+                <!-- Primary Price in USD/kg -->
                 <div class="flex items-baseline justify-between my-2">
                     <div>
-                        <div class="text-3xl font-extrabold font-mono tracking-tight text-white" id="arabicaPrice">285.40</div>
-                        <div class="text-xs text-slate-400 mt-1" id="arabicaSubUnit">US Cents / lb</div>
+                        <div class="text-3xl font-extrabold font-mono tracking-tight text-white" id="arabicaUsdKg">$6.29</div>
+                        <div class="text-xs text-slate-400 mt-1">美元 / 公斤 (USD / kg)</div>
                     </div>
                     <div class="text-right">
                         <div id="arabicaChangeBadge" class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
                             <i class="fa-solid fa-caret-up mr-1" id="arabicaIcon"></i>
-                            <span id="arabicaChange">+3.20 (+1.13%)</span>
+                            <span id="arabicaChange">+0.07 (+1.13%)</span>
                         </div>
                     </div>
                 </div>
 
-                <!-- Converted Units -->
-                <div class="mt-4 pt-3 border-t border-slate-800/80 grid grid-cols-2 gap-2 text-xs font-mono">
-                    <div class="bg-slate-950/50 p-2 rounded-lg">
-                        <span class="text-slate-400 block text-[10px]">折合每公斤 (USD)</span>
-                        <span class="text-slate-200 font-semibold" id="arabicaUsdKg">$6.29 / kg</span>
+                <!-- Converted Currency Units -->
+                <div class="mt-4 pt-3 border-t border-slate-800/80 space-y-2 font-mono text-xs">
+                    <div class="flex justify-between items-center bg-slate-950/60 p-2 rounded-lg">
+                        <span class="text-slate-400 text-[11px]">台幣 / 公斤 (TWD/kg):</span>
+                        <span class="text-amber-300 font-semibold text-sm" id="arabicaTwdKg">NT$ 202.2 / kg</span>
                     </div>
-                    <div class="bg-slate-950/50 p-2 rounded-lg">
-                        <span class="text-slate-400 block text-[10px]">折合 60kg 麻袋 (TWD)</span>
-                        <span class="text-amber-400 font-semibold" id="arabicaTwdBag">NT$ 12,130</span>
+                    <div class="flex justify-between items-center bg-slate-950/60 p-2 rounded-lg">
+                        <span class="text-slate-400 text-[11px]">越南盾 / 公斤 (VND/kg):</span>
+                        <span class="text-emerald-400 font-semibold text-sm" id="arabicaVndKg">160,081 VND / kg</span>
+                    </div>
+                    <div class="text-[10px] text-slate-500 text-right font-sans">
+                        原始期貨報價: <span id="arabicaRawCents">285.40</span> 美分/磅
                     </div>
                 </div>
             </div>
 
             <!-- Robusta Card -->
             <div class="bg-slate-900 rounded-2xl border border-slate-800 p-5 relative overflow-hidden transition-all duration-300 hover:border-coffee-600/50 group">
-                <div class="absolute -right-6 -bottom-6 text-slate-800/20 group-hover:text-coffee-600/10 transition-colors pointer-events-none">
-                    <i class="fa-solid fa-tree text-9xl"></i>
-                </div>
                 <div class="flex items-center justify-between mb-3">
                     <div class="flex items-center space-x-2">
                         <span class="w-3 h-3 rounded-full bg-coffee-500"></span>
                         <h2 class="font-bold text-slate-200">羅布斯塔 (Robusta)</h2>
                     </div>
-                    <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-coffee-500/10 text-coffee-400 border border-coffee-500/20">LIFFE: RC (London)</span>
+                    <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-coffee-500/10 text-coffee-400 border border-coffee-500/20">LIFFE: RC</span>
                 </div>
 
+                <!-- Primary Price in USD/kg -->
                 <div class="flex items-baseline justify-between my-2">
                     <div>
-                        <div class="text-3xl font-extrabold font-mono tracking-tight text-white" id="robustaPrice">4,680</div>
-                        <div class="text-xs text-slate-400 mt-1" id="robustaSubUnit">USD / 公噸 (Metric Ton)</div>
+                        <div class="text-3xl font-extrabold font-mono tracking-tight text-white" id="robustaUsdKg">$4.68</div>
+                        <div class="text-xs text-slate-400 mt-1">美元 / 公斤 (USD / kg)</div>
                     </div>
                     <div class="text-right">
                         <div id="robustaChangeBadge" class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-rose-500/10 text-rose-400 border border-rose-500/20">
                             <i class="fa-solid fa-caret-down mr-1" id="robustaIcon"></i>
-                            <span id="robustaChange">-45 (-0.95%)</span>
+                            <span id="robustaChange">-0.05 (-0.95%)</span>
                         </div>
                     </div>
                 </div>
 
-                <!-- Converted Units -->
-                <div class="mt-4 pt-3 border-t border-slate-800/80 grid grid-cols-2 gap-2 text-xs font-mono">
-                    <div class="bg-slate-950/50 p-2 rounded-lg">
-                        <span class="text-slate-400 block text-[10px]">折合每公斤 (USD)</span>
-                        <span class="text-slate-200 font-semibold" id="robustaUsdKg">$4.68 / kg</span>
+                <!-- Converted Currency Units -->
+                <div class="mt-4 pt-3 border-t border-slate-800/80 space-y-2 font-mono text-xs">
+                    <div class="flex justify-between items-center bg-slate-950/60 p-2 rounded-lg">
+                        <span class="text-slate-400 text-[11px]">台幣 / 公斤 (TWD/kg):</span>
+                        <span class="text-amber-300 font-semibold text-sm" id="robustaTwdKg">NT$ 150.5 / kg</span>
                     </div>
-                    <div class="bg-slate-950/50 p-2 rounded-lg">
-                        <span class="text-slate-400 block text-[10px]">折合 60kg 麻袋 (TWD)</span>
-                        <span class="text-amber-400 font-semibold" id="robustaTwdBag">NT$ 9,028</span>
+                    <div class="flex justify-between items-center bg-slate-950/60 p-2 rounded-lg">
+                        <span class="text-slate-400 text-[11px]">越南盾 / 公斤 (VND/kg):</span>
+                        <span class="text-emerald-400 font-semibold text-sm" id="robustaVndKg">119,106 VND / kg</span>
+                    </div>
+                    <div class="text-[10px] text-slate-500 text-right font-sans">
+                        原始期貨報價: <span id="robustaRawUsd">4,680</span> 美元/公噸
                     </div>
                 </div>
             </div>
 
-            <!-- Arbitrage / Premium Ratio Card -->
+            <!-- Price Difference / Ratio Card -->
             <div class="bg-slate-900 rounded-2xl border border-slate-800 p-5 flex flex-col justify-between">
                 <div>
                     <div class="flex items-center justify-between mb-2">
                         <h2 class="font-bold text-slate-200 flex items-center">
                             <i class="fa-solid fa-scale-balanced mr-2 text-amber-500"></i>
-                            阿/羅 溢價比率 (Spread Ratio)
+                            阿/羅 每公斤價差與溢價
                         </h2>
-                        <span class="text-[10px] text-slate-400">市場配豆指標</span>
+                        <span class="text-[10px] text-slate-400">配豆指標</span>
                     </div>
-                    <p class="text-xs text-slate-400 mb-4">阿拉比卡相較羅布斯塔之價格溢價比例</p>
 
-                    <div class="flex items-baseline justify-between mb-2">
-                        <span class="text-3xl font-extrabold font-mono text-amber-300" id="spreadRatio">1.34x</span>
-                        <span class="text-xs text-slate-400">歷史平均: ~1.5x - 2.0x</span>
+                    <div class="flex items-baseline justify-between my-3">
+                        <div>
+                            <span class="text-2xl font-extrabold font-mono text-amber-300" id="spreadUsdKg">+$1.61 / kg</span>
+                            <span class="text-xs text-slate-400 block mt-0.5">每公斤價差 (USD/kg)</span>
+                        </div>
+                        <div class="text-right">
+                            <span class="text-xl font-bold font-mono text-slate-200" id="spreadRatio">1.34x</span>
+                            <span class="text-xs text-slate-400 block mt-0.5">溢價倍數</span>
+                        </div>
                     </div>
 
                     <!-- Progress bar visual -->
-                    <div class="w-full bg-slate-950 h-2 rounded-full overflow-hidden mb-2">
+                    <div class="w-full bg-slate-950 h-2 rounded-full overflow-hidden mb-3">
                         <div id="ratioBar" class="bg-gradient-to-r from-coffee-500 to-amber-500 h-full transition-all duration-500" style="width: 67%"></div>
                     </div>
                 </div>
 
-                <div class="bg-slate-950/60 rounded-xl p-3 border border-slate-800 text-xs">
-                    <div class="flex justify-between text-slate-400 mb-1">
-                        <span>目前價差 (Spread):</span>
-                        <span class="font-mono text-slate-200 font-medium" id="priceSpreadVal">$1.61 / kg</span>
+                <div class="bg-slate-950/60 rounded-xl p-3 border border-slate-800 text-xs font-mono space-y-1">
+                    <div class="flex justify-between text-slate-400">
+                        <span>台幣每公斤價差:</span>
+                        <span class="text-amber-300 font-semibold" id="spreadTwdKg">NT$ 51.7 / kg</span>
                     </div>
-                    <div class="text-[11px] text-slate-400 leading-relaxed" id="ratioCommentary">
-                        阿拉比卡溢價處於歷史較低區間，羅布斯塔價格維持高檔，配豆成本差距縮小。
+                    <div class="flex justify-between text-slate-400">
+                        <span>越南盾每公斤價差:</span>
+                        <span class="text-emerald-400 font-semibold" id="spreadVndKg">40,975 VND / kg</span>
                     </div>
                 </div>
             </div>
@@ -221,29 +219,23 @@
         <!-- Chart Section & Main Tools Grid -->
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-            <!-- Left 2 Cols: Chart Panel -->
+            <!-- Left 2 Cols: Chart Panel (in USD/kg) -->
             <div class="lg:col-span-2 bg-slate-900 rounded-2xl border border-slate-800 p-5 flex flex-col">
                 <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
                     <div>
                         <h3 class="font-bold text-lg text-slate-100 flex items-center">
                             <i class="fa-solid fa-chart-line text-coffee-500 mr-2"></i>
-                            生豆價格走勢與趨勢比較
+                            每公斤生豆價格走勢曲線 (USD/kg)
                         </h3>
-                        <p class="text-xs text-slate-400">顯示 ICE Arabica 與 LIFFE Robusta 近期走勢曲線</p>
+                        <p class="text-xs text-slate-400">自動換算為美元/公斤後之歷史走勢比較</p>
                     </div>
 
                     <!-- Chart Controls -->
                     <div class="flex items-center space-x-2">
                         <div class="bg-slate-950 p-1 rounded-xl border border-slate-800 flex text-xs font-medium">
-                            <button onclick="setChartMetric('both')" id="btnMetricBoth" class="px-2.5 py-1 rounded-lg bg-coffee-600 text-white transition">兩者比較</button>
-                            <button onclick="setChartMetric('arabica')" id="btnMetricArabica" class="px-2.5 py-1 rounded-lg text-slate-400 hover:text-slate-200 transition">僅阿拉比卡</button>
-                            <button onclick="setChartMetric('robusta')" id="btnMetricRobusta" class="px-2.5 py-1 rounded-lg text-slate-400 hover:text-slate-200 transition">僅羅布斯塔</button>
-                        </div>
-                        <div class="bg-slate-950 p-1 rounded-xl border border-slate-800 flex text-xs font-medium">
-                            <button onclick="setChartRange('1D')" class="chart-time-btn px-2 py-1 rounded-lg text-slate-400 hover:text-white">日</button>
-                            <button onclick="setChartRange('1W')" class="chart-time-btn px-2 py-1 rounded-lg text-slate-400 hover:text-white">週</button>
-                            <button onclick="setChartRange('1M')" class="chart-time-btn active px-2 py-1 rounded-lg bg-slate-800 text-amber-400">月</button>
-                            <button onclick="setChartRange('1Y')" class="chart-time-btn px-2 py-1 rounded-lg text-slate-400 hover:text-white">年</button>
+                            <button onclick="setChartCurrency('USD')" id="btnCurrencyUsd" class="px-2.5 py-1 rounded-lg bg-coffee-600 text-white transition">USD/kg</button>
+                            <button onclick="setChartCurrency('TWD')" id="btnCurrencyTwd" class="px-2.5 py-1 rounded-lg text-slate-400 hover:text-slate-200 transition">TWD/kg</button>
+                            <button onclick="setChartCurrency('VND')" id="btnCurrencyVnd" class="px-2.5 py-1 rounded-lg text-slate-400 hover:text-slate-200 transition">VND/kg</button>
                         </div>
                     </div>
                 </div>
@@ -254,152 +246,113 @@
                 </div>
             </div>
 
-            <!-- Right 1 Col: Roaster Cost & Profit Calculator -->
+            <!-- Right 1 Col: Roaster Cost Calculator -->
             <div class="bg-slate-900 rounded-2xl border border-slate-800 p-5 flex flex-col justify-between">
                 <div>
                     <h3 class="font-bold text-slate-100 flex items-center mb-1">
                         <i class="fa-solid fa-calculator text-amber-500 mr-2"></i>
-                        烘豆生豆進貨成本計算機
+                        生豆到港與烘焙成本計算機
                     </h3>
-                    <p class="text-xs text-slate-400 mb-4">根據即時期貨價與關稅、損耗估算熟豆成本</p>
+                    <p class="text-xs text-slate-400 mb-4">輸入產區溢價與雜費試算全幣別成本</p>
 
                     <div class="space-y-3 text-xs">
                         <!-- Bean Select -->
                         <div>
                             <label class="text-slate-300 block mb-1">選擇生豆種類</label>
                             <select id="calcBeanType" onchange="calculateCost()" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-slate-200 focus:outline-none focus:border-amber-500">
-                                <option value="arabica">阿拉比卡 (Arabica) - 期貨價折合</option>
-                                <option value="robusta">羅布斯塔 (Robusta) - 期貨價折合</option>
+                                <option value="arabica">阿拉比卡 (Arabica) - 期貨折合</option>
+                                <option value="robusta">羅布斯塔 (Robusta) - 期貨折合</option>
                             </select>
                         </div>
 
-                        <!-- FOB Premium / Differential -->
+                        <!-- FOB Differential USD/kg -->
                         <div>
-                            <label class="text-slate-300 block mb-1">產區溢價/貼水 (Differential, 美分/磅)</label>
-                            <input type="number" id="calcDiff" value="25" oninput="calculateCost()" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-slate-200 font-mono focus:outline-none focus:border-amber-500" placeholder="+25">
+                            <label class="text-slate-300 block mb-1">產區溢價/貼水 (Differential, 美元/公斤)</label>
+                            <input type="number" id="calcDiffUsd" value="0.55" step="0.05" oninput="calculateCost()" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-slate-200 font-mono focus:outline-none focus:border-amber-500">
                         </div>
 
-                        <!-- Freight & Import Tax -->
+                        <!-- Freight & Loss -->
                         <div class="grid grid-cols-2 gap-2">
                             <div>
-                                <label class="text-slate-300 block mb-1">運費與雜費 (TWD/kg)</label>
-                                <input type="number" id="calcFreight" value="35" oninput="calculateCost()" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-slate-200 font-mono focus:outline-none focus:border-amber-500">
+                                <label class="text-slate-300 block mb-1">運費雜費 (USD/kg)</label>
+                                <input type="number" id="calcFreightUsd" value="0.30" step="0.05" oninput="calculateCost()" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-slate-200 font-mono focus:outline-none focus:border-amber-500">
                             </div>
                             <div>
                                 <label class="text-slate-300 block mb-1">烘焙脫水損耗 (%)</label>
                                 <input type="number" id="calcLoss" value="15" oninput="calculateCost()" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-slate-200 font-mono focus:outline-none focus:border-amber-500">
                             </div>
                         </div>
-
-                        <!-- Exchange Rate Overwrite -->
-                        <div>
-                            <label class="text-slate-300 block mb-1">採購匯率 (USD/TWD)</label>
-                            <input type="number" id="calcRate" value="32.15" step="0.01" oninput="calculateCost()" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-slate-200 font-mono focus:outline-none focus:border-amber-500">
-                        </div>
                     </div>
                 </div>
 
                 <!-- Calculation Result Box -->
-                <div class="mt-4 pt-4 border-t border-slate-800 bg-slate-950/80 rounded-xl p-3.5 space-y-2">
-                    <div class="flex justify-between items-center text-xs text-slate-400">
-                        <span>估算生豆到港價 (TWD/kg):</span>
-                        <span class="font-mono text-slate-200 font-semibold" id="resGreenKg">NT$ 237 / kg</span>
+                <div class="mt-4 pt-4 border-t border-slate-800 bg-slate-950/80 rounded-xl p-3.5 space-y-2 font-mono text-xs">
+                    <div class="flex justify-between items-center text-slate-400">
+                        <span>預估生豆到港價 (USD/kg):</span>
+                        <span class="text-slate-200 font-semibold" id="resGreenUsd">$7.14 / kg</span>
                     </div>
-                    <div class="flex justify-between items-center text-xs text-slate-400">
-                        <span>估算單袋生豆價 (60kg/袋):</span>
-                        <span class="font-mono text-slate-200 font-semibold" id="resGreenBag">NT$ 14,220</span>
+                    <div class="flex justify-between items-center text-slate-400">
+                        <span>預估生豆到港價 (TWD/kg):</span>
+                        <span class="text-amber-300 font-semibold" id="resGreenTwd">NT$ 229.6 / kg</span>
                     </div>
-                    <div class="flex justify-between items-center border-t border-slate-800/80 pt-2 text-sm font-bold">
-                        <span class="text-amber-400">預估烘焙熟豆成本 (TWD/kg):</span>
-                        <span class="font-mono text-emerald-400" id="resRoastedKg">NT$ 278 / kg</span>
+                    <div class="flex justify-between items-center text-slate-400">
+                        <span>預估生豆到港價 (VND/kg):</span>
+                        <span class="text-emerald-400 font-semibold" id="resGreenVnd">181,713 VND / kg</span>
                     </div>
-                    <div class="text-[10px] text-slate-500 text-right">
-                        以 15% 脫水率預估熟豆淨成本
+                    <div class="flex justify-between items-center border-t border-slate-800/80 pt-2 font-bold text-sm">
+                        <span class="text-amber-400 font-sans">預估熟豆成本 (TWD/kg):</span>
+                        <span class="text-emerald-400" id="resRoastedTwd">NT$ 270.1 / kg</span>
                     </div>
                 </div>
             </div>
 
         </div>
-
-        <!-- Market Quick Insights & Supply Info -->
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
-            <div class="bg-slate-900 rounded-xl p-4 border border-slate-800 flex items-start space-x-3">
-                <div class="p-2.5 bg-amber-500/10 text-amber-400 rounded-lg">
-                    <i class="fa-solid fa-cloud-sun-rain text-lg"></i>
-                </div>
-                <div>
-                    <h4 class="font-bold text-sm text-slate-200">巴西(Brazil) 氣候與雨量</h4>
-                    <p class="text-xs text-slate-400 mt-1 leading-relaxed">米納斯吉拉斯州 (Minas Gerais) 開花期降雨正常，市場密切追蹤 2026/27 產季產量預測。</p>
-                </div>
-            </div>
-
-            <div class="bg-slate-900 rounded-xl p-4 border border-slate-800 flex items-start space-x-3">
-                <div class="p-2.5 bg-coffee-500/10 text-coffee-400 rounded-lg">
-                    <i class="fa-solid fa-ship text-lg"></i>
-                </div>
-                <div>
-                    <h4 class="font-bold text-sm text-slate-200">越南(Vietnam) 出口物流</h4>
-                    <p class="text-xs text-slate-400 mt-1 leading-relaxed">紅海航線運價震盪與農民惜售情緒交織，羅布斯塔現貨市場庫存相對偏緊。</p>
-                </div>
-            </div>
-
-            <div class="bg-slate-900 rounded-xl p-4 border border-slate-800 flex items-start space-x-3">
-                <div class="p-2.5 bg-emerald-500/10 text-emerald-400 rounded-lg">
-                    <i class="fa-solid fa-leaf text-lg"></i>
-                </div>
-                <div>
-                    <h4 class="font-bold text-sm text-slate-200">EUDR 歐盟零毀林法案</h4>
-                    <p class="text-xs text-slate-400 mt-1 leading-relaxed">合規合約認證生豆在歐洲市場仍具備強勢溢價，買家分流採購效應持續發酵。</p>
-                </div>
-            </div>
-        </div>
-
     </main>
 
     <!-- Footer -->
     <footer class="bg-slate-900 border-t border-slate-800 mt-8 py-6 text-center text-xs text-slate-500">
         <div class="max-w-7xl mx-auto px-4">
-            <p>© 2026 BeanMarket Live | 本系統數據係模擬即時交易所行情資料，僅供烘豆商、生豆貿易商與咖啡從業人員參考。</p>
+            <p>© 2026 BeanMarket Live | 數據已自動換算為美元/公斤、台幣/公斤與越南盾/公斤，僅供烘豆商與貿易商採購參考。</p>
         </div>
     </footer>
 
-    <!-- AI Market Analyst Modal -->
-    <div id="aiModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
-        <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-2xl w-full p-6 shadow-2xl relative flex flex-col max-h-[85vh]">
+    <!-- Vietnam Coffee Price Search Modal -->
+    <div id="vnSearchModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-3xl w-full p-6 shadow-2xl relative flex flex-col max-h-[90vh]">
             <!-- Modal Header -->
             <div class="flex items-center justify-between pb-4 border-b border-slate-800">
                 <div class="flex items-center space-x-3">
-                    <div class="w-9 h-9 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400">
-                        <i class="fa-solid fa-wand-magic-sparkles"></i>
+                    <div class="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
+                        <i class="fa-solid fa-magnifying-glass-dollar text-lg"></i>
                     </div>
                     <div>
-                        <h3 class="font-bold text-slate-100">Gemini 生豆即時市場情報員</h3>
-                        <p class="text-[11px] text-slate-400">利用 Google 連網搜尋技術分析全球咖啡生豆最新行情與事件</p>
+                        <h3 class="font-bold text-slate-100">越南生豆現貨平均售價搜尋</h3>
+                        <p class="text-[11px] text-slate-400">AI 即時聯網搜尋越南阿拉比卡與羅布斯塔之規格、數量與價格 (VND/kg & USD/kg)</p>
                     </div>
                 </div>
-                <button onclick="closeAiModal()" class="text-slate-400 hover:text-white transition">
+                <button onclick="closeVnSearchModal()" class="text-slate-400 hover:text-white transition">
                     <i class="fa-solid fa-xmark text-lg"></i>
                 </button>
             </div>
 
             <!-- Modal Content Body -->
-            <div class="py-4 overflow-y-auto flex-1 space-y-4" id="aiModalBody">
-                <div class="text-xs text-slate-300 leading-relaxed space-y-3" id="aiReportContainer">
-                    <div class="text-center py-8 text-slate-400">
-                        <i class="fa-solid fa-newspaper text-3xl mb-3 text-slate-600 block"></i>
-                        點擊下方按鈕，AI 將即時連網搜尋最新全球咖啡生豆價格動態與期貨行情。
+            <div class="py-4 overflow-y-auto flex-1 space-y-4" id="vnSearchModalBody">
+                <div class="text-xs text-slate-300 leading-relaxed" id="vnReportContainer">
+                    <div class="text-center py-10 text-slate-400">
+                        <i class="fa-solid fa-boxes-packing text-4xl mb-3 text-slate-600 block"></i>
+                        點擊下方「開始搜尋」按鈕，AI 將自動查詢越南產區（林同/大叻、多樂/邦美蜀）最新生豆價格、現貨規格（Screen 16/18, 瑕疵率, 水分）與最低起訂數量（FOB 貨櫃量）。
                     </div>
                 </div>
             </div>
 
             <!-- Modal Footer -->
             <div class="pt-4 border-t border-slate-800 flex items-center justify-between">
-                <div class="text-[11px] text-slate-500" id="groundingSources">
+                <div class="text-[11px] text-slate-500" id="vnGroundingSources">
                     <!-- Grounding sources will be populated here -->
                 </div>
-                <button id="fetchAiBtn" onclick="generateAiReport()" class="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-medium text-xs transition flex items-center space-x-2">
-                    <i class="fa-solid fa-magnifying-glass-chart"></i>
-                    <span>抓取最新市場簡報</span>
+                <button id="fetchVnBtn" onclick="searchVietnamPrices()" class="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-xs transition flex items-center space-x-2 shadow-lg shadow-emerald-950/50">
+                    <i class="fa-solid fa-globe"></i>
+                    <span>搜尋最新越南現貨行情</span>
                 </button>
             </div>
         </div>
@@ -407,35 +360,28 @@
 
     <!-- Application Script -->
     <script>
-        // Store API Key string (Execution environment will inject)
+        // Store API Key string
         const apiKey = "";
 
-        // Simulated Market Baseline Data
+        // Global Market State (Internally kept in standard USD/kg for accurate conversions)
         let state = {
-            arabicaCentsLb: 285.40,
-            arabicaChange: 3.20,
-            robustaUsdTon: 4680,
-            robustaChange: -45,
+            arabicaCentsLb: 285.40,  // ICE Raw
+            arabicaChangeCents: 3.20,
+            robustaUsdTon: 4680,     // LIFFE Raw
+            robustaChangeUsd: -45,
             usdTwd: 32.15,
-            chartRange: '1M',
-            chartMetric: 'both'
+            usdVnd: 25450,
+            chartCurrency: 'USD'
         };
 
         let priceChart = null;
 
-        // Initialize Application
         window.addEventListener('load', () => {
             updateClock();
             setInterval(updateClock, 1000);
-
-            // Periodically simulate live price fluctuations
             setInterval(simulateMarketTicks, 4000);
 
-            // Render Chart
             initChart();
-
-            // Initial calculation
-            calculateCost();
             updateUI();
         });
 
@@ -444,17 +390,14 @@
             document.getElementById('lastUpdateClock').innerText = now.toLocaleTimeString('zh-TW', { hour12: false });
         }
 
-        // Live Simulated Price Movements
         function simulateMarketTicks() {
-            // Arabica tick (-0.4 to +0.4)
             const arabicaDelta = (Math.random() - 0.48) * 0.8;
             state.arabicaCentsLb = Math.max(100, state.arabicaCentsLb + arabicaDelta);
-            state.arabicaChange += arabicaDelta;
+            state.arabicaChangeCents += arabicaDelta;
 
-            // Robusta tick (-8 to +8)
             const robustaDelta = (Math.random() - 0.48) * 16;
             state.robustaUsdTon = Math.max(1000, state.robustaUsdTon + robustaDelta);
-            state.robustaChange += robustaDelta;
+            state.robustaChangeUsd += robustaDelta;
 
             updateUI();
         }
@@ -469,134 +412,120 @@
         }
 
         function updateUI() {
-            // 1. Arabica Calculations
+            // Conversion formulas:
             // 1 lb = 0.45359237 kg
-            // 1 Cents/lb = (0.01 USD) / 0.45359237 kg = 0.0220462 USD/kg
-            const arabicaUsdPerKg = (state.arabicaCentsLb * 0.01) / 0.45359237;
-            const arabicaTwdPerBag = arabicaUsdPerKg * 60 * state.usdTwd;
-            const arabicaPct = (state.arabicaChange / (state.arabicaCentsLb - state.arabicaChange)) * 100;
+            // Arabica (Cents/lb) -> USD/kg = (Cents/lb * 0.01) / 0.45359237
+            const arabicaUsdKg = (state.arabicaCentsLb * 0.01) / 0.45359237;
+            const arabicaChangeUsdKg = (state.arabicaChangeCents * 0.01) / 0.45359237;
+            const arabicaTwdKg = arabicaUsdKg * state.usdTwd;
+            const arabicaVndKg = arabicaUsdKg * state.usdVnd;
+            const arabicaPct = (arabicaChangeUsdKg / (arabicaUsdKg - arabicaChangeUsdKg)) * 100;
 
-            document.getElementById('arabicaPrice').innerText = state.arabicaCentsLb.toFixed(2);
-            document.getElementById('arabicaUsdKg').innerText = `$${arabicaUsdPerKg.toFixed(2)} / kg`;
-            document.getElementById('arabicaTwdBag').innerText = `NT$ ${Math.round(arabicaTwdPerBag).toLocaleString()}`;
+            // Robusta (USD/Metric Ton) -> USD/kg = USD/Ton / 1000
+            const robustaUsdKg = state.robustaUsdTon / 1000;
+            const robustaChangeUsdKg = state.robustaChangeUsd / 1000;
+            const robustaTwdKg = robustaUsdKg * state.usdTwd;
+            const robustaVndKg = robustaUsdKg * state.usdVnd;
+            const robustaPct = (robustaChangeUsdKg / (robustaUsdKg - robustaChangeUsdKg)) * 100;
+
+            // Update Arabica Card
+            document.getElementById('arabicaUsdKg').innerText = `$${arabicaUsdKg.toFixed(2)} / kg`;
+            document.getElementById('arabicaTwdKg').innerText = `NT$ ${arabicaTwdKg.toFixed(1)} / kg`;
+            document.getElementById('arabicaVndKg').innerText = `${Math.round(arabicaVndKg).toLocaleString()} VND / kg`;
+            document.getElementById('arabicaRawCents').innerText = state.arabicaCentsLb.toFixed(2);
 
             const arabicaBadge = document.getElementById('arabicaChangeBadge');
             const arabicaIcon = document.getElementById('arabicaIcon');
-            if (state.arabicaChange >= 0) {
+            if (arabicaChangeUsdKg >= 0) {
                 arabicaBadge.className = "inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20";
                 arabicaIcon.className = "fa-solid fa-caret-up mr-1";
-                document.getElementById('arabicaChange').innerText = `+${state.arabicaChange.toFixed(2)} (+${arabicaPct.toFixed(2)}%)`;
+                document.getElementById('arabicaChange').innerText = `+$${arabicaChangeUsdKg.toFixed(2)} (+${arabicaPct.toFixed(2)}%)`;
             } else {
                 arabicaBadge.className = "inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-rose-500/10 text-rose-400 border border-rose-500/20";
                 arabicaIcon.className = "fa-solid fa-caret-down mr-1";
-                document.getElementById('arabicaChange').innerText = `${state.arabicaChange.toFixed(2)} (${arabicaPct.toFixed(2)}%)`;
+                document.getElementById('arabicaChange').innerText = `-$${Math.abs(arabicaChangeUsdKg).toFixed(2)} (${arabicaPct.toFixed(2)}%)`;
             }
 
-            // 2. Robusta Calculations
-            // Robusta is quoted in USD/Metric Ton (1,000 kg)
-            const robustaUsdPerKg = state.robustaUsdTon / 1000;
-            const robustaTwdPerBag = robustaUsdPerKg * 60 * state.usdTwd;
-            const robustaPct = (state.robustaChange / (state.robustaUsdTon - state.robustaChange)) * 100;
-
-            document.getElementById('robustaPrice').innerText = Math.round(state.robustaUsdTon).toLocaleString();
-            document.getElementById('robustaUsdKg').innerText = `$${robustaUsdPerKg.toFixed(2)} / kg`;
-            document.getElementById('robustaTwdBag').innerText = `NT$ ${Math.round(robustaTwdPerBag).toLocaleString()}`;
+            // Update Robusta Card
+            document.getElementById('robustaUsdKg').innerText = `$${robustaUsdKg.toFixed(2)} / kg`;
+            document.getElementById('robustaTwdKg').innerText = `NT$ ${robustaTwdKg.toFixed(1)} / kg`;
+            document.getElementById('robustaVndKg').innerText = `${Math.round(robustaVndKg).toLocaleString()} VND / kg`;
+            document.getElementById('robustaRawUsd').innerText = Math.round(state.robustaUsdTon).toLocaleString();
 
             const robustaBadge = document.getElementById('robustaChangeBadge');
             const robustaIcon = document.getElementById('robustaIcon');
-            if (state.robustaChange >= 0) {
+            if (robustaChangeUsdKg >= 0) {
                 robustaBadge.className = "inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20";
                 robustaIcon.className = "fa-solid fa-caret-up mr-1";
-                document.getElementById('robustaChange').innerText = `+${Math.round(state.robustaChange)} (+${robustaPct.toFixed(2)}%)`;
+                document.getElementById('robustaChange').innerText = `+$${robustaChangeUsdKg.toFixed(2)} (+${robustaPct.toFixed(2)}%)`;
             } else {
                 robustaBadge.className = "inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-rose-500/10 text-rose-400 border border-rose-500/20";
                 robustaIcon.className = "fa-solid fa-caret-down mr-1";
-                document.getElementById('robustaChange').innerText = `${Math.round(state.robustaChange)} (${robustaPct.toFixed(2)}%)`;
+                document.getElementById('robustaChange').innerText = `-$${Math.abs(robustaChangeUsdKg).toFixed(2)} (${robustaPct.toFixed(2)}%)`;
             }
 
-            // 3. Spread / Ratio
-            const ratio = arabicaUsdPerKg / robustaUsdPerKg;
-            const spreadVal = arabicaUsdPerKg - robustaUsdPerKg;
+            // Update Spread Ratio & Differences
+            const spreadUsdKg = arabicaUsdKg - robustaUsdKg;
+            const spreadTwdKg = arabicaTwdKg - robustaTwdKg;
+            const spreadVndKg = arabicaVndKg - robustaVndKg;
+            const ratio = arabicaUsdKg / robustaUsdKg;
 
+            document.getElementById('spreadUsdKg').innerText = `+$${spreadUsdKg.toFixed(2)} / kg`;
+            document.getElementById('spreadTwdKg').innerText = `NT$ ${spreadTwdKg.toFixed(1)} / kg`;
+            document.getElementById('spreadVndKg').innerText = `${Math.round(spreadVndKg).toLocaleString()} VND / kg`;
             document.getElementById('spreadRatio').innerText = `${ratio.toFixed(2)}x`;
-            document.getElementById('priceSpreadVal').innerText = `$${spreadVal.toFixed(2)} / kg`;
 
-            // Progress bar visual (1.0x to 2.5x map to 0% to 100%)
             const barPct = Math.min(100, Math.max(0, ((ratio - 1.0) / 1.5) * 100));
             document.getElementById('ratioBar').style.width = `${barPct}%`;
 
-            let commentary = "";
-            if (ratio > 1.8) {
-                commentary = "阿拉比卡溢價較高，商業配豆中羅布斯塔成本優勢顯著，工業買家可能增加羅布斯塔配比。";
-            } else if (ratio >= 1.3) {
-                commentary = "阿/羅 價差處於近年均衡區間，阿拉比卡與羅布斯塔需求動能穩定。";
-            } else {
-                commentary = "羅布斯塔相對堅挺，阿拉比卡溢價縮小至歷史低位，精品與高品質阿拉比卡性價比提升。";
-            }
-            document.getElementById('ratioCommentary').innerText = commentary;
-
-            // Recalculate cost calculator
             calculateCost();
         }
 
-        // Cost Calculator Logic
+        // Cost Calculator
         function calculateCost() {
             const beanType = document.getElementById('calcBeanType').value;
-            const diffCentsLb = parseFloat(document.getElementById('calcDiff').value) || 0;
-            const freightTwdKg = parseFloat(document.getElementById('calcFreight').value) || 0;
+            const diffUsdKg = parseFloat(document.getElementById('calcDiffUsd').value) || 0;
+            const freightUsdKg = parseFloat(document.getElementById('calcFreightUsd').value) || 0;
             const lossPct = parseFloat(document.getElementById('calcLoss').value) || 0;
-            const usdTwd = parseFloat(document.getElementById('calcRate').value) || state.usdTwd;
 
-            let baseUsdPerKg = 0;
+            let baseUsdKg = 0;
             if (beanType === 'arabica') {
-                // Base futures price + differential
-                const totalCentsLb = state.arabicaCentsLb + diffCentsLb;
-                baseUsdPerKg = (totalCentsLb * 0.01) / 0.45359237;
+                baseUsdKg = (state.arabicaCentsLb * 0.01) / 0.45359237;
             } else {
-                // Robusta base in USD/Ton convert to kg + diff
-                const diffUsdKg = (diffCentsLb * 0.01) / 0.45359237;
-                baseUsdPerKg = (state.robustaUsdTon / 1000) + diffUsdKg;
+                baseUsdKg = state.robustaUsdTon / 1000;
             }
 
-            // Green bean landed cost per kg (TWD)
-            const greenCostTwdKg = (baseUsdPerKg * usdTwd) + freightTwdKg;
-            const greenCostBag = greenCostTwdKg * 60;
+            const totalGreenUsdKg = baseUsdKg + diffUsdKg + freightUsdKg;
+            const totalGreenTwdKg = totalGreenUsdKg * state.usdTwd;
+            const totalGreenVndKg = totalGreenUsdKg * state.usdVnd;
 
-            // Roasted bean cost per kg (taking weight loss into account)
-            // Roasted Weight = Green Weight * (1 - lossPct/100)
-            const roastedCostTwdKg = greenCostTwdKg / (1 - (lossPct / 100));
+            const roastedTwdKg = totalGreenTwdKg / (1 - (lossPct / 100));
 
-            document.getElementById('resGreenKg').innerText = `NT$ ${Math.round(greenCostTwdKg).toLocaleString()} / kg`;
-            document.getElementById('resGreenBag').innerText = `NT$ ${Math.round(greenCostBag).toLocaleString()}`;
-            document.getElementById('resRoastedKg').innerText = `NT$ ${Math.round(roastedCostTwdKg).toLocaleString()} / kg`;
+            document.getElementById('resGreenUsd').innerText = `$${totalGreenUsdKg.toFixed(2)} / kg`;
+            document.getElementById('resGreenTwd').innerText = `NT$ ${totalGreenTwdKg.toFixed(1)} / kg`;
+            document.getElementById('resGreenVnd').innerText = `${Math.round(totalGreenVndKg).toLocaleString()} VND / kg`;
+            document.getElementById('resRoastedTwd').innerText = `NT$ ${roastedTwdKg.toFixed(1)} / kg`;
         }
 
-        // Initialize Chart
+        // Chart Initialization
         function initChart() {
             const ctx = document.getElementById('priceChart').getContext('2d');
-
-            // Generate sample historical series (normalized to USD/kg for direct comparison)
-            const labels = [];
-            const arabicaSeries = [];
-            const robustaSeries = [];
-
             const days = 30;
-            const now = new Date();
+            const labels = [];
+            const arabicaData = [];
+            const robustaData = [];
 
-            let baseArabicaUsdKg = (state.arabicaCentsLb * 0.01) / 0.45359237;
-            let baseRobustaUsdKg = state.robustaUsdTon / 1000;
+            const now = new Date();
+            let baseA = (state.arabicaCentsLb * 0.01) / 0.45359237;
+            let baseR = state.robustaUsdTon / 1000;
 
             for (let i = days; i >= 0; i--) {
                 const d = new Date(now);
                 d.setDate(d.getDate() - i);
                 labels.push(`${d.getMonth() + 1}/${d.getDate()}`);
 
-                // Synthetic random walk
-                const aNoise = (Math.sin(i / 3) * 0.3) + ((Math.random() - 0.5) * 0.2);
-                const rNoise = (Math.cos(i / 4) * 0.25) + ((Math.random() - 0.5) * 0.15);
-
-                arabicaSeries.push(+(baseArabicaUsdKg + aNoise - (i * 0.02)).toFixed(2));
-                robustaSeries.push(+(baseRobustaUsdKg + rNoise - (i * 0.015)).toFixed(2));
+                arabicaData.push(+(baseA + Math.sin(i / 3) * 0.25).toFixed(2));
+                robustaData.push(+(baseR + Math.cos(i / 4) * 0.2).toFixed(2));
             }
 
             priceChart = new Chart(ctx, {
@@ -606,173 +535,107 @@
                     datasets: [
                         {
                             label: '阿拉比卡 Arabica (USD/kg)',
-                            data: arabicaSeries,
+                            data: arabicaData,
                             borderColor: '#ce9d67',
                             backgroundColor: 'rgba(206, 157, 103, 0.1)',
                             borderWidth: 2,
                             tension: 0.3,
-                            fill: true,
-                            pointRadius: 2,
-                            pointHoverRadius: 6
+                            fill: true
                         },
                         {
                             label: '羅布斯塔 Robusta (USD/kg)',
-                            data: robustaSeries,
+                            data: robustaData,
                             borderColor: '#844b2b',
                             backgroundColor: 'rgba(132, 75, 43, 0.1)',
                             borderWidth: 2,
                             tension: 0.3,
-                            fill: true,
-                            pointRadius: 2,
-                            pointHoverRadius: 6
+                            fill: true
                         }
                     ]
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    interaction: {
-                        mode: 'index',
-                        intersect: false,
-                    },
                     plugins: {
-                        legend: {
-                            labels: {
-                                color: '#94a3b8',
-                                font: { size: 12 }
-                            }
-                        },
+                        legend: { labels: { color: '#94a3b8' } },
                         tooltip: {
                             backgroundColor: '#0f172a',
                             borderColor: '#334155',
-                            borderWidth: 1,
-                            padding: 10,
-                            callbacks: {
-                                label: function(context) {
-                                    return `${context.dataset.label}: $${context.parsed.y.toFixed(2)} / kg`;
-                                }
-                            }
+                            borderWidth: 1
                         }
                     },
                     scales: {
-                        x: {
-                            grid: { color: 'rgba(51, 65, 85, 0.3)' },
-                            ticks: { color: '#64748b', font: { size: 11 } }
-                        },
-                        y: {
-                            grid: { color: 'rgba(51, 65, 85, 0.3)' },
-                            ticks: {
-                                color: '#64748b',
-                                font: { size: 11 },
-                                callback: function(value) { return '$' + value; }
-                            }
-                        }
+                        x: { grid: { color: 'rgba(51, 65, 85, 0.3)' }, ticks: { color: '#64748b' } },
+                        y: { grid: { color: 'rgba(51, 65, 85, 0.3)' }, ticks: { color: '#64748b' } }
                     }
                 }
             });
         }
 
-        function setChartMetric(metric) {
-            state.chartMetric = metric;
-
-            // Update button styles
-            document.getElementById('btnMetricBoth').className = metric === 'both' ? 'px-2.5 py-1 rounded-lg bg-coffee-600 text-white transition' : 'px-2.5 py-1 rounded-lg text-slate-400 hover:text-slate-200 transition';
-            document.getElementById('btnMetricArabica').className = metric === 'arabica' ? 'px-2.5 py-1 rounded-lg bg-coffee-600 text-white transition' : 'px-2.5 py-1 rounded-lg text-slate-400 hover:text-slate-200 transition';
-            document.getElementById('btnMetricRobusta').className = metric === 'robusta' ? 'px-2.5 py-1 rounded-lg bg-coffee-600 text-white transition' : 'px-2.5 py-1 rounded-lg text-slate-400 hover:text-slate-200 transition';
+        function setChartCurrency(curr) {
+            state.chartCurrency = curr;
+            document.getElementById('btnCurrencyUsd').className = curr === 'USD' ? 'px-2.5 py-1 rounded-lg bg-coffee-600 text-white transition' : 'px-2.5 py-1 rounded-lg text-slate-400 hover:text-slate-200 transition';
+            document.getElementById('btnCurrencyTwd').className = curr === 'TWD' ? 'px-2.5 py-1 rounded-lg bg-coffee-600 text-white transition' : 'px-2.5 py-1 rounded-lg text-slate-400 hover:text-slate-200 transition';
+            document.getElementById('btnCurrencyVnd').className = curr === 'VND' ? 'px-2.5 py-1 rounded-lg bg-coffee-600 text-white transition' : 'px-2.5 py-1 rounded-lg text-slate-400 hover:text-slate-200 transition';
 
             if (!priceChart) return;
 
-            if (metric === 'both') {
-                priceChart.data.datasets[0].hidden = false;
-                priceChart.data.datasets[1].hidden = false;
-            } else if (metric === 'arabica') {
-                priceChart.data.datasets[0].hidden = false;
-                priceChart.data.datasets[1].hidden = true;
-            } else if (metric === 'robusta') {
-                priceChart.data.datasets[0].hidden = true;
-                priceChart.data.datasets[1].hidden = false;
-            }
+            let multiplier = 1;
+            let symbol = '$';
+            if (curr === 'TWD') { multiplier = state.usdTwd; symbol = 'NT$ '; }
+            if (curr === 'VND') { multiplier = state.usdVnd; symbol = 'VND '; }
+
+            let baseA = (state.arabicaCentsLb * 0.01) / 0.45359237;
+            let baseR = state.robustaUsdTon / 1000;
+
+            const newA = priceChart.data.labels.map((_, i) => Math.round((baseA + Math.sin(i / 3) * 0.25) * multiplier));
+            const newR = priceChart.data.labels.map((_, i) => Math.round((baseR + Math.cos(i / 4) * 0.2) * multiplier));
+
+            priceChart.data.datasets[0].label = `阿拉比卡 Arabica (${curr}/kg)`;
+            priceChart.data.datasets[1].label = `羅布斯塔 Robusta (${curr}/kg)`;
+            priceChart.data.datasets[0].data = newA;
+            priceChart.data.datasets[1].data = newR;
             priceChart.update();
         }
 
-        function setChartRange(range) {
-            state.chartRange = range;
-            const btns = document.querySelectorAll('.chart-time-btn');
-            btns.forEach(btn => {
-                if (btn.innerText === range || (range==='1D' && btn.innerText==='日') || (range==='1W' && btn.innerText==='週') || (range==='1M' && btn.innerText==='月') || (range==='1Y' && btn.innerText==='年')) {
-                    btn.className = 'chart-time-btn active px-2 py-1 rounded-lg bg-slate-800 text-amber-400';
-                } else {
-                    btn.className = 'chart-time-btn px-2 py-1 rounded-lg text-slate-400 hover:text-white';
-                }
-            });
-
-            // Re-simulate chart data based on timeframe
-            if (priceChart) {
-                const points = range === '1D' ? 12 : (range === '1W' ? 7 : (range === '1M' ? 30 : 52));
-                const newLabels = [];
-                const newArabica = [];
-                const newRobusta = [];
-
-                let baseA = (state.arabicaCentsLb * 0.01) / 0.45359237;
-                let baseR = state.robustaUsdTon / 1000;
-
-                for (let i = points; i >= 0; i--) {
-                    newLabels.push(range === '1D' ? `${24 - (i*2)}:00` : `P${points-i}`);
-                    newArabica.push(+(baseA + (Math.sin(i/2)*0.4) + (Math.random()-0.5)*0.2).toFixed(2));
-                    newRobusta.push(+(baseR + (Math.cos(i/3)*0.3) + (Math.random()-0.5)*0.2).toFixed(2));
-                }
-
-                priceChart.data.labels = newLabels;
-                priceChart.data.datasets[0].data = newArabica;
-                priceChart.data.datasets[1].data = newRobusta;
-                priceChart.update();
-            }
+        function openVnSearchModal() {
+            document.getElementById('vnSearchModal').classList.remove('hidden');
         }
 
-        // Modal Handlers
-        function openAiModal() {
-            document.getElementById('aiModal').classList.remove('hidden');
+        function closeVnSearchModal() {
+            document.getElementById('vnSearchModal').classList.add('hidden');
         }
 
-        function closeAiModal() {
-            document.getElementById('aiModal').classList.add('hidden');
-        }
-
-        // Exponential Backoff API Call to Gemini with Search Grounding
         async function fetchWithBackoff(url, options, maxRetries = 5) {
             let delay = 1000;
             for (let i = 0; i < maxRetries; i++) {
                 try {
                     const response = await fetch(url, options);
-                    if (response.ok) {
-                        return await response.json();
-                    }
-                } catch (err) {
-                    // Retry silently
-                }
+                    if (response.ok) return await response.json();
+                } catch (err) {}
                 await new Promise(resolve => setTimeout(resolve, delay));
                 delay *= 2;
             }
-            throw new Error("無法連接 AI 市場分析伺服器，請稍後再試。");
+            throw new Error("無法連接 AI 分析伺服器，請稍後再試。");
         }
 
-        async function generateAiReport() {
-            const container = document.getElementById('aiReportContainer');
-            const btn = document.getElementById('fetchAiBtn');
-            const sourcesDiv = document.getElementById('groundingSources');
+        async function searchVietnamPrices() {
+            const container = document.getElementById('vnReportContainer');
+            const btn = document.getElementById('fetchVnBtn');
+            const sourcesDiv = document.getElementById('vnGroundingSources');
 
             btn.disabled = true;
-            btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i><span>分析市場數據中...</span>`;
+            btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i><span>連網查詢越南現貨中...</span>`;
             container.innerHTML = `
                 <div class="flex flex-col items-center justify-center py-12 space-y-3">
-                    <div class="w-8 h-8 border-2 border-amber-500 border-t-transparent rounded-full animate-spin"></div>
-                    <p class="text-xs text-slate-400">正在搜尋全球生豆市場、巴西氣候與 ICE/LIFFE 期貨最新新聞...</p>
+                    <div class="w-8 h-8 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
+                    <p class="text-xs text-slate-400">正在聯網搜尋越南產區（Gia Lai, Dak Lak, Lam Dong）與出口商最新阿拉比卡與羅布斯塔生豆現貨售價、規格與交易起訂量...</p>
                 </div>
             `;
             sourcesDiv.innerHTML = '';
 
-            const systemPrompt = "你是一位國際咖啡生豆期貨貿易分析師。請用繁體中文，針對 Arabica (KC) 與 Robusta (RC) 生豆的最新市場動態、產量影響因子（氣候、塞港、EUDR法案）進行精簡且專業的簡報。結構要包含：1. 今日市場焦點 2. 產區氣候與供給分析 3. 烘豆商採購建議。點列顯示，條理分明。";
-            const userQuery = `請查詢目前最新的阿拉比卡 (Arabica) 與羅布斯塔 (Robusta) 生豆價格趨勢、期貨走勢以及近期全球咖啡生豆市場重點新聞簡報。當前系統阿拉伯卡參考價格約 ${state.arabicaCentsLb.toFixed(1)} 美分/磅，羅布斯塔約 ${Math.round(state.robustaUsdTon)} 美元/噸。`;
+            const systemPrompt = "你是一位專精於越南咖啡生豆出口貿易的專家。請用繁體中文，詳細列出越南當前阿拉比卡（Arabica Catimor, 大叻Lam Dong產區）與羅布斯塔（Robusta, 多樂Dak Lak產區）的平均現貨售價、主流生豆規格（篩號 Screen, 瑕疵率 Defects, 水分 Moisture）與起訂採購數量（MOQ, 如 20ft 貨櫃量 18~19.2 噸）。價格請務必包含 越南盾/公斤 (VND/kg) 與 美元/公斤 (USD/kg)，格式使用清楚的表格與點列說明。";
+            const userQuery = "請連網搜尋最新越南阿拉比卡 (Arabica) 與羅布斯塔 (Robusta) 生豆現貨售價，包含主流規格（Screen 16/18, Grade 1, FAQ）、水分瑕疵標準與最小出口訂購數量。";
 
             const payload = {
                 contents: [{ parts: [{ text: userQuery }] }],
@@ -796,9 +659,8 @@
                 })).filter(s => s.uri && s.title) || [];
 
                 if (text) {
-                    // Format basic markdown elements into HTML
                     let formatted = text
-                        .replace(/\*\*(.*?)\*\*/g, '<strong class="text-amber-300 font-bold">$1</strong>')
+                        .replace(/\*\*(.*?)\*\*/g, '<strong class="text-emerald-300 font-bold">$1</strong>')
                         .replace(/### (.*?)\n/g, '<h4 class="font-bold text-slate-200 mt-3 mb-1 text-sm border-b border-slate-800 pb-1">$1</h4>')
                         .replace(/\n\* /g, '<br>• ')
                         .replace(/\n- /g, '<br>• ')
@@ -807,18 +669,18 @@
                     container.innerHTML = `<div class="bg-slate-950 p-4 rounded-xl border border-slate-800 font-sans leading-relaxed text-slate-300 space-y-2">${formatted}</div>`;
 
                     if (sources.length > 0) {
-                        let sourcesHtml = '<span class="text-slate-400 font-medium">資料來源: </span>';
-                        sourcesHtml += sources.slice(0, 3).map(s => `<a href="${s.uri}" target="_blank" class="text-amber-400 hover:underline mr-2 text-[10px]">${s.title.length > 20 ? s.title.substring(0,20)+'...' : s.title}</a>`).join('');
+                        let sourcesHtml = '<span class="text-slate-400 font-medium">網路參考來源: </span>';
+                        sourcesHtml += sources.slice(0, 3).map(s => `<a href="${s.uri}" target="_blank" class="text-emerald-400 hover:underline mr-2 text-[10px]">${s.title.length > 22 ? s.title.substring(0,22)+'...' : s.title}</a>`).join('');
                         sourcesDiv.innerHTML = sourcesHtml;
                     }
                 } else {
-                    container.innerHTML = `<p class="text-rose-400">分析生成失敗，請再試一次。</p>`;
+                    container.innerHTML = `<p class="text-rose-400">無法獲取越南現貨資料，請重試。</p>`;
                 }
             } catch (err) {
                 container.innerHTML = `<p class="text-rose-400 text-center py-6">${err.message || "發生未知錯誤"}</p>`;
             } finally {
                 btn.disabled = false;
-                btn.innerHTML = `<i class="fa-solid fa-magnifying-glass-chart"></i><span>重新抓取簡報</span>`;
+                btn.innerHTML = `<i class="fa-solid fa-globe"></i><span>重新搜尋越南現貨行情</span>`;
             }
         }
     </script>
