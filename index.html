@@ -1,0 +1,827 @@
+<!DOCTYPE html>
+<html lang="zh-TW" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>全球生豆即時行情與市場分析 | Arabica & Robusta Tracker</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        coffee: {
+                            50: '#fdfbf7',
+                            100: '#f7f2e8',
+                            200: '#ebdcc5',
+                            300: '#ddbf98',
+                            400: '#ce9d67',
+                            500: '#bc7f3f',
+                            600: '#a36332',
+                            700: '#844b2b',
+                            800: '#6d3d29',
+                            900: '#593325',
+                            950: '#321a13',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
+        body {
+            font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+        }
+        .glow-green { box-shadow: 0 0 15px rgba(34, 197, 94, 0.2); }
+        .glow-red { box-shadow: 0 0 15px rgba(239, 68, 68, 0.2); }
+        .pulse-light {
+            animation: pulse-border 2s infinite;
+        }
+        @keyframes pulse-border {
+            0% { border-color: rgba(188, 127, 63, 0.3); }
+            50% { border-color: rgba(188, 127, 63, 0.8); }
+            100% { border-color: rgba(188, 127, 63, 0.3); }
+        }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col antialiased selection:bg-coffee-500 selection:text-white">
+
+    <!-- Top Ticker Bar -->
+    <div class="bg-slate-900 border-b border-slate-800 text-xs py-2 px-4 flex items-center justify-between overflow-x-auto whitespace-nowrap">
+        <div class="flex items-center space-x-6">
+            <span class="flex items-center text-emerald-400 font-semibold">
+                <span class="w-2 h-2 rounded-full bg-emerald-500 animate-ping mr-2"></span>
+                國際期貨市場連線中 (ICE / LIFFE)
+            </span>
+            <span class="text-slate-400">USD/TWD 匯率: <span id="usdTwdRate" class="text-slate-200 font-mono">32.15</span></span>
+            <span class="text-slate-400">巴西(Arabica) 產季狀態: <span class="text-amber-400 font-medium">採收季末期 / 關注花期天氣</span></span>
+            <span class="text-slate-400">越南(Robusta) 產季狀態: <span class="text-emerald-400 font-medium">主要供給期</span></span>
+        </div>
+        <div class="text-slate-400 hidden md:block">
+            最後更新時間: <span id="lastUpdateClock" class="font-mono text-slate-300">--:--:--</span>
+        </div>
+    </div>
+
+    <!-- Header Navigation -->
+    <header class="bg-slate-900/80 backdrop-blur-md sticky top-0 z-40 border-b border-slate-800">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-coffee-700 to-amber-600 flex items-center justify-center text-white shadow-lg shadow-coffee-900/50">
+                    <i class="fa-solid me-0 fa-mug-hot text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="font-bold text-lg leading-tight bg-clip-text text-transparent bg-gradient-to-r from-amber-200 via-coffee-300 to-amber-500">
+                        BeanMarket Live
+                    </h1>
+                    <p class="text-[10px] text-slate-400">全球生豆價格即時監控與智慧分析</p>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="flex items-center space-x-3">
+                <button id="refreshBtn" onclick="triggerManualUpdate()" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-medium text-slate-300 transition flex items-center space-x-2">
+                    <i id="refreshIcon" class="fa-solid fa-rotate"></i>
+                    <span class="hidden sm:inline">重新整理</span>
+                </button>
+                <button onclick="openAiModal()" class="px-3 py-1.5 rounded-lg bg-gradient-to-r from-coffee-600 to-amber-600 hover:from-coffee-500 hover:to-amber-500 text-xs font-semibold text-white shadow-md shadow-coffee-950/50 transition flex items-center space-x-2 border border-amber-500/30">
+                    <i class="fa-solid fa-wand-magic-sparkles text-amber-300"></i>
+                    <span>AI 市場即時簡報</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+
+        <!-- Top Market Cards Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+
+            <!-- Arabica Card -->
+            <div class="bg-slate-900 rounded-2xl border border-slate-800 p-5 relative overflow-hidden transition-all duration-300 hover:border-amber-600/50 group">
+                <div class="absolute -right-6 -bottom-6 text-slate-800/20 group-hover:text-amber-600/10 transition-colors pointer-events-none">
+                    <i class="fa-solid fa-seedling text-9xl"></i>
+                </div>
+                <div class="flex items-center justify-between mb-3">
+                    <div class="flex items-center space-x-2">
+                        <span class="w-3 h-3 rounded-full bg-amber-500"></span>
+                        <h2 class="font-bold text-slate-200">阿拉比卡 (Arabica)</h2>
+                    </div>
+                    <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20">ICE: KC (Coffee C)</span>
+                </div>
+
+                <div class="flex items-baseline justify-between my-2">
+                    <div>
+                        <div class="text-3xl font-extrabold font-mono tracking-tight text-white" id="arabicaPrice">285.40</div>
+                        <div class="text-xs text-slate-400 mt-1" id="arabicaSubUnit">US Cents / lb</div>
+                    </div>
+                    <div class="text-right">
+                        <div id="arabicaChangeBadge" class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                            <i class="fa-solid fa-caret-up mr-1" id="arabicaIcon"></i>
+                            <span id="arabicaChange">+3.20 (+1.13%)</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Converted Units -->
+                <div class="mt-4 pt-3 border-t border-slate-800/80 grid grid-cols-2 gap-2 text-xs font-mono">
+                    <div class="bg-slate-950/50 p-2 rounded-lg">
+                        <span class="text-slate-400 block text-[10px]">折合每公斤 (USD)</span>
+                        <span class="text-slate-200 font-semibold" id="arabicaUsdKg">$6.29 / kg</span>
+                    </div>
+                    <div class="bg-slate-950/50 p-2 rounded-lg">
+                        <span class="text-slate-400 block text-[10px]">折合 60kg 麻袋 (TWD)</span>
+                        <span class="text-amber-400 font-semibold" id="arabicaTwdBag">NT$ 12,130</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Robusta Card -->
+            <div class="bg-slate-900 rounded-2xl border border-slate-800 p-5 relative overflow-hidden transition-all duration-300 hover:border-coffee-600/50 group">
+                <div class="absolute -right-6 -bottom-6 text-slate-800/20 group-hover:text-coffee-600/10 transition-colors pointer-events-none">
+                    <i class="fa-solid fa-tree text-9xl"></i>
+                </div>
+                <div class="flex items-center justify-between mb-3">
+                    <div class="flex items-center space-x-2">
+                        <span class="w-3 h-3 rounded-full bg-coffee-500"></span>
+                        <h2 class="font-bold text-slate-200">羅布斯塔 (Robusta)</h2>
+                    </div>
+                    <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-coffee-500/10 text-coffee-400 border border-coffee-500/20">LIFFE: RC (London)</span>
+                </div>
+
+                <div class="flex items-baseline justify-between my-2">
+                    <div>
+                        <div class="text-3xl font-extrabold font-mono tracking-tight text-white" id="robustaPrice">4,680</div>
+                        <div class="text-xs text-slate-400 mt-1" id="robustaSubUnit">USD / 公噸 (Metric Ton)</div>
+                    </div>
+                    <div class="text-right">
+                        <div id="robustaChangeBadge" class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-rose-500/10 text-rose-400 border border-rose-500/20">
+                            <i class="fa-solid fa-caret-down mr-1" id="robustaIcon"></i>
+                            <span id="robustaChange">-45 (-0.95%)</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Converted Units -->
+                <div class="mt-4 pt-3 border-t border-slate-800/80 grid grid-cols-2 gap-2 text-xs font-mono">
+                    <div class="bg-slate-950/50 p-2 rounded-lg">
+                        <span class="text-slate-400 block text-[10px]">折合每公斤 (USD)</span>
+                        <span class="text-slate-200 font-semibold" id="robustaUsdKg">$4.68 / kg</span>
+                    </div>
+                    <div class="bg-slate-950/50 p-2 rounded-lg">
+                        <span class="text-slate-400 block text-[10px]">折合 60kg 麻袋 (TWD)</span>
+                        <span class="text-amber-400 font-semibold" id="robustaTwdBag">NT$ 9,028</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Arbitrage / Premium Ratio Card -->
+            <div class="bg-slate-900 rounded-2xl border border-slate-800 p-5 flex flex-col justify-between">
+                <div>
+                    <div class="flex items-center justify-between mb-2">
+                        <h2 class="font-bold text-slate-200 flex items-center">
+                            <i class="fa-solid fa-scale-balanced mr-2 text-amber-500"></i>
+                            阿/羅 溢價比率 (Spread Ratio)
+                        </h2>
+                        <span class="text-[10px] text-slate-400">市場配豆指標</span>
+                    </div>
+                    <p class="text-xs text-slate-400 mb-4">阿拉比卡相較羅布斯塔之價格溢價比例</p>
+
+                    <div class="flex items-baseline justify-between mb-2">
+                        <span class="text-3xl font-extrabold font-mono text-amber-300" id="spreadRatio">1.34x</span>
+                        <span class="text-xs text-slate-400">歷史平均: ~1.5x - 2.0x</span>
+                    </div>
+
+                    <!-- Progress bar visual -->
+                    <div class="w-full bg-slate-950 h-2 rounded-full overflow-hidden mb-2">
+                        <div id="ratioBar" class="bg-gradient-to-r from-coffee-500 to-amber-500 h-full transition-all duration-500" style="width: 67%"></div>
+                    </div>
+                </div>
+
+                <div class="bg-slate-950/60 rounded-xl p-3 border border-slate-800 text-xs">
+                    <div class="flex justify-between text-slate-400 mb-1">
+                        <span>目前價差 (Spread):</span>
+                        <span class="font-mono text-slate-200 font-medium" id="priceSpreadVal">$1.61 / kg</span>
+                    </div>
+                    <div class="text-[11px] text-slate-400 leading-relaxed" id="ratioCommentary">
+                        阿拉比卡溢價處於歷史較低區間，羅布斯塔價格維持高檔，配豆成本差距縮小。
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Chart Section & Main Tools Grid -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+            <!-- Left 2 Cols: Chart Panel -->
+            <div class="lg:col-span-2 bg-slate-900 rounded-2xl border border-slate-800 p-5 flex flex-col">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+                    <div>
+                        <h3 class="font-bold text-lg text-slate-100 flex items-center">
+                            <i class="fa-solid fa-chart-line text-coffee-500 mr-2"></i>
+                            生豆價格走勢與趨勢比較
+                        </h3>
+                        <p class="text-xs text-slate-400">顯示 ICE Arabica 與 LIFFE Robusta 近期走勢曲線</p>
+                    </div>
+
+                    <!-- Chart Controls -->
+                    <div class="flex items-center space-x-2">
+                        <div class="bg-slate-950 p-1 rounded-xl border border-slate-800 flex text-xs font-medium">
+                            <button onclick="setChartMetric('both')" id="btnMetricBoth" class="px-2.5 py-1 rounded-lg bg-coffee-600 text-white transition">兩者比較</button>
+                            <button onclick="setChartMetric('arabica')" id="btnMetricArabica" class="px-2.5 py-1 rounded-lg text-slate-400 hover:text-slate-200 transition">僅阿拉比卡</button>
+                            <button onclick="setChartMetric('robusta')" id="btnMetricRobusta" class="px-2.5 py-1 rounded-lg text-slate-400 hover:text-slate-200 transition">僅羅布斯塔</button>
+                        </div>
+                        <div class="bg-slate-950 p-1 rounded-xl border border-slate-800 flex text-xs font-medium">
+                            <button onclick="setChartRange('1D')" class="chart-time-btn px-2 py-1 rounded-lg text-slate-400 hover:text-white">日</button>
+                            <button onclick="setChartRange('1W')" class="chart-time-btn px-2 py-1 rounded-lg text-slate-400 hover:text-white">週</button>
+                            <button onclick="setChartRange('1M')" class="chart-time-btn active px-2 py-1 rounded-lg bg-slate-800 text-amber-400">月</button>
+                            <button onclick="setChartRange('1Y')" class="chart-time-btn px-2 py-1 rounded-lg text-slate-400 hover:text-white">年</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Canvas -->
+                <div class="relative flex-1 min-h-[320px] w-full">
+                    <canvas id="priceChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Right 1 Col: Roaster Cost & Profit Calculator -->
+            <div class="bg-slate-900 rounded-2xl border border-slate-800 p-5 flex flex-col justify-between">
+                <div>
+                    <h3 class="font-bold text-slate-100 flex items-center mb-1">
+                        <i class="fa-solid fa-calculator text-amber-500 mr-2"></i>
+                        烘豆生豆進貨成本計算機
+                    </h3>
+                    <p class="text-xs text-slate-400 mb-4">根據即時期貨價與關稅、損耗估算熟豆成本</p>
+
+                    <div class="space-y-3 text-xs">
+                        <!-- Bean Select -->
+                        <div>
+                            <label class="text-slate-300 block mb-1">選擇生豆種類</label>
+                            <select id="calcBeanType" onchange="calculateCost()" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-slate-200 focus:outline-none focus:border-amber-500">
+                                <option value="arabica">阿拉比卡 (Arabica) - 期貨價折合</option>
+                                <option value="robusta">羅布斯塔 (Robusta) - 期貨價折合</option>
+                            </select>
+                        </div>
+
+                        <!-- FOB Premium / Differential -->
+                        <div>
+                            <label class="text-slate-300 block mb-1">產區溢價/貼水 (Differential, 美分/磅)</label>
+                            <input type="number" id="calcDiff" value="25" oninput="calculateCost()" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-slate-200 font-mono focus:outline-none focus:border-amber-500" placeholder="+25">
+                        </div>
+
+                        <!-- Freight & Import Tax -->
+                        <div class="grid grid-cols-2 gap-2">
+                            <div>
+                                <label class="text-slate-300 block mb-1">運費與雜費 (TWD/kg)</label>
+                                <input type="number" id="calcFreight" value="35" oninput="calculateCost()" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-slate-200 font-mono focus:outline-none focus:border-amber-500">
+                            </div>
+                            <div>
+                                <label class="text-slate-300 block mb-1">烘焙脫水損耗 (%)</label>
+                                <input type="number" id="calcLoss" value="15" oninput="calculateCost()" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-slate-200 font-mono focus:outline-none focus:border-amber-500">
+                            </div>
+                        </div>
+
+                        <!-- Exchange Rate Overwrite -->
+                        <div>
+                            <label class="text-slate-300 block mb-1">採購匯率 (USD/TWD)</label>
+                            <input type="number" id="calcRate" value="32.15" step="0.01" oninput="calculateCost()" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-slate-200 font-mono focus:outline-none focus:border-amber-500">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Calculation Result Box -->
+                <div class="mt-4 pt-4 border-t border-slate-800 bg-slate-950/80 rounded-xl p-3.5 space-y-2">
+                    <div class="flex justify-between items-center text-xs text-slate-400">
+                        <span>估算生豆到港價 (TWD/kg):</span>
+                        <span class="font-mono text-slate-200 font-semibold" id="resGreenKg">NT$ 237 / kg</span>
+                    </div>
+                    <div class="flex justify-between items-center text-xs text-slate-400">
+                        <span>估算單袋生豆價 (60kg/袋):</span>
+                        <span class="font-mono text-slate-200 font-semibold" id="resGreenBag">NT$ 14,220</span>
+                    </div>
+                    <div class="flex justify-between items-center border-t border-slate-800/80 pt-2 text-sm font-bold">
+                        <span class="text-amber-400">預估烘焙熟豆成本 (TWD/kg):</span>
+                        <span class="font-mono text-emerald-400" id="resRoastedKg">NT$ 278 / kg</span>
+                    </div>
+                    <div class="text-[10px] text-slate-500 text-right">
+                        以 15% 脫水率預估熟豆淨成本
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Market Quick Insights & Supply Info -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+            <div class="bg-slate-900 rounded-xl p-4 border border-slate-800 flex items-start space-x-3">
+                <div class="p-2.5 bg-amber-500/10 text-amber-400 rounded-lg">
+                    <i class="fa-solid fa-cloud-sun-rain text-lg"></i>
+                </div>
+                <div>
+                    <h4 class="font-bold text-sm text-slate-200">巴西(Brazil) 氣候與雨量</h4>
+                    <p class="text-xs text-slate-400 mt-1 leading-relaxed">米納斯吉拉斯州 (Minas Gerais) 開花期降雨正常，市場密切追蹤 2026/27 產季產量預測。</p>
+                </div>
+            </div>
+
+            <div class="bg-slate-900 rounded-xl p-4 border border-slate-800 flex items-start space-x-3">
+                <div class="p-2.5 bg-coffee-500/10 text-coffee-400 rounded-lg">
+                    <i class="fa-solid fa-ship text-lg"></i>
+                </div>
+                <div>
+                    <h4 class="font-bold text-sm text-slate-200">越南(Vietnam) 出口物流</h4>
+                    <p class="text-xs text-slate-400 mt-1 leading-relaxed">紅海航線運價震盪與農民惜售情緒交織，羅布斯塔現貨市場庫存相對偏緊。</p>
+                </div>
+            </div>
+
+            <div class="bg-slate-900 rounded-xl p-4 border border-slate-800 flex items-start space-x-3">
+                <div class="p-2.5 bg-emerald-500/10 text-emerald-400 rounded-lg">
+                    <i class="fa-solid fa-leaf text-lg"></i>
+                </div>
+                <div>
+                    <h4 class="font-bold text-sm text-slate-200">EUDR 歐盟零毀林法案</h4>
+                    <p class="text-xs text-slate-400 mt-1 leading-relaxed">合規合約認證生豆在歐洲市場仍具備強勢溢價，買家分流採購效應持續發酵。</p>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-slate-900 border-t border-slate-800 mt-8 py-6 text-center text-xs text-slate-500">
+        <div class="max-w-7xl mx-auto px-4">
+            <p>© 2026 BeanMarket Live | 本系統數據係模擬即時交易所行情資料，僅供烘豆商、生豆貿易商與咖啡從業人員參考。</p>
+        </div>
+    </footer>
+
+    <!-- AI Market Analyst Modal -->
+    <div id="aiModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-2xl w-full p-6 shadow-2xl relative flex flex-col max-h-[85vh]">
+            <!-- Modal Header -->
+            <div class="flex items-center justify-between pb-4 border-b border-slate-800">
+                <div class="flex items-center space-x-3">
+                    <div class="w-9 h-9 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400">
+                        <i class="fa-solid fa-wand-magic-sparkles"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-slate-100">Gemini 生豆即時市場情報員</h3>
+                        <p class="text-[11px] text-slate-400">利用 Google 連網搜尋技術分析全球咖啡生豆最新行情與事件</p>
+                    </div>
+                </div>
+                <button onclick="closeAiModal()" class="text-slate-400 hover:text-white transition">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <!-- Modal Content Body -->
+            <div class="py-4 overflow-y-auto flex-1 space-y-4" id="aiModalBody">
+                <div class="text-xs text-slate-300 leading-relaxed space-y-3" id="aiReportContainer">
+                    <div class="text-center py-8 text-slate-400">
+                        <i class="fa-solid fa-newspaper text-3xl mb-3 text-slate-600 block"></i>
+                        點擊下方按鈕，AI 將即時連網搜尋最新全球咖啡生豆價格動態與期貨行情。
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="pt-4 border-t border-slate-800 flex items-center justify-between">
+                <div class="text-[11px] text-slate-500" id="groundingSources">
+                    <!-- Grounding sources will be populated here -->
+                </div>
+                <button id="fetchAiBtn" onclick="generateAiReport()" class="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-medium text-xs transition flex items-center space-x-2">
+                    <i class="fa-solid fa-magnifying-glass-chart"></i>
+                    <span>抓取最新市場簡報</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Application Script -->
+    <script>
+        // Store API Key string (Execution environment will inject)
+        const apiKey = "";
+
+        // Simulated Market Baseline Data
+        let state = {
+            arabicaCentsLb: 285.40,
+            arabicaChange: 3.20,
+            robustaUsdTon: 4680,
+            robustaChange: -45,
+            usdTwd: 32.15,
+            chartRange: '1M',
+            chartMetric: 'both'
+        };
+
+        let priceChart = null;
+
+        // Initialize Application
+        window.addEventListener('load', () => {
+            updateClock();
+            setInterval(updateClock, 1000);
+
+            // Periodically simulate live price fluctuations
+            setInterval(simulateMarketTicks, 4000);
+
+            // Render Chart
+            initChart();
+
+            // Initial calculation
+            calculateCost();
+            updateUI();
+        });
+
+        function updateClock() {
+            const now = new Date();
+            document.getElementById('lastUpdateClock').innerText = now.toLocaleTimeString('zh-TW', { hour12: false });
+        }
+
+        // Live Simulated Price Movements
+        function simulateMarketTicks() {
+            // Arabica tick (-0.4 to +0.4)
+            const arabicaDelta = (Math.random() - 0.48) * 0.8;
+            state.arabicaCentsLb = Math.max(100, state.arabicaCentsLb + arabicaDelta);
+            state.arabicaChange += arabicaDelta;
+
+            // Robusta tick (-8 to +8)
+            const robustaDelta = (Math.random() - 0.48) * 16;
+            state.robustaUsdTon = Math.max(1000, state.robustaUsdTon + robustaDelta);
+            state.robustaChange += robustaDelta;
+
+            updateUI();
+        }
+
+        function triggerManualUpdate() {
+            const icon = document.getElementById('refreshIcon');
+            icon.classList.add('fa-spin');
+            simulateMarketTicks();
+            setTimeout(() => {
+                icon.classList.remove('fa-spin');
+            }, 600);
+        }
+
+        function updateUI() {
+            // 1. Arabica Calculations
+            // 1 lb = 0.45359237 kg
+            // 1 Cents/lb = (0.01 USD) / 0.45359237 kg = 0.0220462 USD/kg
+            const arabicaUsdPerKg = (state.arabicaCentsLb * 0.01) / 0.45359237;
+            const arabicaTwdPerBag = arabicaUsdPerKg * 60 * state.usdTwd;
+            const arabicaPct = (state.arabicaChange / (state.arabicaCentsLb - state.arabicaChange)) * 100;
+
+            document.getElementById('arabicaPrice').innerText = state.arabicaCentsLb.toFixed(2);
+            document.getElementById('arabicaUsdKg').innerText = `$${arabicaUsdPerKg.toFixed(2)} / kg`;
+            document.getElementById('arabicaTwdBag').innerText = `NT$ ${Math.round(arabicaTwdPerBag).toLocaleString()}`;
+
+            const arabicaBadge = document.getElementById('arabicaChangeBadge');
+            const arabicaIcon = document.getElementById('arabicaIcon');
+            if (state.arabicaChange >= 0) {
+                arabicaBadge.className = "inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20";
+                arabicaIcon.className = "fa-solid fa-caret-up mr-1";
+                document.getElementById('arabicaChange').innerText = `+${state.arabicaChange.toFixed(2)} (+${arabicaPct.toFixed(2)}%)`;
+            } else {
+                arabicaBadge.className = "inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-rose-500/10 text-rose-400 border border-rose-500/20";
+                arabicaIcon.className = "fa-solid fa-caret-down mr-1";
+                document.getElementById('arabicaChange').innerText = `${state.arabicaChange.toFixed(2)} (${arabicaPct.toFixed(2)}%)`;
+            }
+
+            // 2. Robusta Calculations
+            // Robusta is quoted in USD/Metric Ton (1,000 kg)
+            const robustaUsdPerKg = state.robustaUsdTon / 1000;
+            const robustaTwdPerBag = robustaUsdPerKg * 60 * state.usdTwd;
+            const robustaPct = (state.robustaChange / (state.robustaUsdTon - state.robustaChange)) * 100;
+
+            document.getElementById('robustaPrice').innerText = Math.round(state.robustaUsdTon).toLocaleString();
+            document.getElementById('robustaUsdKg').innerText = `$${robustaUsdPerKg.toFixed(2)} / kg`;
+            document.getElementById('robustaTwdBag').innerText = `NT$ ${Math.round(robustaTwdPerBag).toLocaleString()}`;
+
+            const robustaBadge = document.getElementById('robustaChangeBadge');
+            const robustaIcon = document.getElementById('robustaIcon');
+            if (state.robustaChange >= 0) {
+                robustaBadge.className = "inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20";
+                robustaIcon.className = "fa-solid fa-caret-up mr-1";
+                document.getElementById('robustaChange').innerText = `+${Math.round(state.robustaChange)} (+${robustaPct.toFixed(2)}%)`;
+            } else {
+                robustaBadge.className = "inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-rose-500/10 text-rose-400 border border-rose-500/20";
+                robustaIcon.className = "fa-solid fa-caret-down mr-1";
+                document.getElementById('robustaChange').innerText = `${Math.round(state.robustaChange)} (${robustaPct.toFixed(2)}%)`;
+            }
+
+            // 3. Spread / Ratio
+            const ratio = arabicaUsdPerKg / robustaUsdPerKg;
+            const spreadVal = arabicaUsdPerKg - robustaUsdPerKg;
+
+            document.getElementById('spreadRatio').innerText = `${ratio.toFixed(2)}x`;
+            document.getElementById('priceSpreadVal').innerText = `$${spreadVal.toFixed(2)} / kg`;
+
+            // Progress bar visual (1.0x to 2.5x map to 0% to 100%)
+            const barPct = Math.min(100, Math.max(0, ((ratio - 1.0) / 1.5) * 100));
+            document.getElementById('ratioBar').style.width = `${barPct}%`;
+
+            let commentary = "";
+            if (ratio > 1.8) {
+                commentary = "阿拉比卡溢價較高，商業配豆中羅布斯塔成本優勢顯著，工業買家可能增加羅布斯塔配比。";
+            } else if (ratio >= 1.3) {
+                commentary = "阿/羅 價差處於近年均衡區間，阿拉比卡與羅布斯塔需求動能穩定。";
+            } else {
+                commentary = "羅布斯塔相對堅挺，阿拉比卡溢價縮小至歷史低位，精品與高品質阿拉比卡性價比提升。";
+            }
+            document.getElementById('ratioCommentary').innerText = commentary;
+
+            // Recalculate cost calculator
+            calculateCost();
+        }
+
+        // Cost Calculator Logic
+        function calculateCost() {
+            const beanType = document.getElementById('calcBeanType').value;
+            const diffCentsLb = parseFloat(document.getElementById('calcDiff').value) || 0;
+            const freightTwdKg = parseFloat(document.getElementById('calcFreight').value) || 0;
+            const lossPct = parseFloat(document.getElementById('calcLoss').value) || 0;
+            const usdTwd = parseFloat(document.getElementById('calcRate').value) || state.usdTwd;
+
+            let baseUsdPerKg = 0;
+            if (beanType === 'arabica') {
+                // Base futures price + differential
+                const totalCentsLb = state.arabicaCentsLb + diffCentsLb;
+                baseUsdPerKg = (totalCentsLb * 0.01) / 0.45359237;
+            } else {
+                // Robusta base in USD/Ton convert to kg + diff
+                const diffUsdKg = (diffCentsLb * 0.01) / 0.45359237;
+                baseUsdPerKg = (state.robustaUsdTon / 1000) + diffUsdKg;
+            }
+
+            // Green bean landed cost per kg (TWD)
+            const greenCostTwdKg = (baseUsdPerKg * usdTwd) + freightTwdKg;
+            const greenCostBag = greenCostTwdKg * 60;
+
+            // Roasted bean cost per kg (taking weight loss into account)
+            // Roasted Weight = Green Weight * (1 - lossPct/100)
+            const roastedCostTwdKg = greenCostTwdKg / (1 - (lossPct / 100));
+
+            document.getElementById('resGreenKg').innerText = `NT$ ${Math.round(greenCostTwdKg).toLocaleString()} / kg`;
+            document.getElementById('resGreenBag').innerText = `NT$ ${Math.round(greenCostBag).toLocaleString()}`;
+            document.getElementById('resRoastedKg').innerText = `NT$ ${Math.round(roastedCostTwdKg).toLocaleString()} / kg`;
+        }
+
+        // Initialize Chart
+        function initChart() {
+            const ctx = document.getElementById('priceChart').getContext('2d');
+
+            // Generate sample historical series (normalized to USD/kg for direct comparison)
+            const labels = [];
+            const arabicaSeries = [];
+            const robustaSeries = [];
+
+            const days = 30;
+            const now = new Date();
+
+            let baseArabicaUsdKg = (state.arabicaCentsLb * 0.01) / 0.45359237;
+            let baseRobustaUsdKg = state.robustaUsdTon / 1000;
+
+            for (let i = days; i >= 0; i--) {
+                const d = new Date(now);
+                d.setDate(d.getDate() - i);
+                labels.push(`${d.getMonth() + 1}/${d.getDate()}`);
+
+                // Synthetic random walk
+                const aNoise = (Math.sin(i / 3) * 0.3) + ((Math.random() - 0.5) * 0.2);
+                const rNoise = (Math.cos(i / 4) * 0.25) + ((Math.random() - 0.5) * 0.15);
+
+                arabicaSeries.push(+(baseArabicaUsdKg + aNoise - (i * 0.02)).toFixed(2));
+                robustaSeries.push(+(baseRobustaUsdKg + rNoise - (i * 0.015)).toFixed(2));
+            }
+
+            priceChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: '阿拉比卡 Arabica (USD/kg)',
+                            data: arabicaSeries,
+                            borderColor: '#ce9d67',
+                            backgroundColor: 'rgba(206, 157, 103, 0.1)',
+                            borderWidth: 2,
+                            tension: 0.3,
+                            fill: true,
+                            pointRadius: 2,
+                            pointHoverRadius: 6
+                        },
+                        {
+                            label: '羅布斯塔 Robusta (USD/kg)',
+                            data: robustaSeries,
+                            borderColor: '#844b2b',
+                            backgroundColor: 'rgba(132, 75, 43, 0.1)',
+                            borderWidth: 2,
+                            tension: 0.3,
+                            fill: true,
+                            pointRadius: 2,
+                            pointHoverRadius: 6
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false,
+                    },
+                    plugins: {
+                        legend: {
+                            labels: {
+                                color: '#94a3b8',
+                                font: { size: 12 }
+                            }
+                        },
+                        tooltip: {
+                            backgroundColor: '#0f172a',
+                            borderColor: '#334155',
+                            borderWidth: 1,
+                            padding: 10,
+                            callbacks: {
+                                label: function(context) {
+                                    return `${context.dataset.label}: $${context.parsed.y.toFixed(2)} / kg`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: { color: 'rgba(51, 65, 85, 0.3)' },
+                            ticks: { color: '#64748b', font: { size: 11 } }
+                        },
+                        y: {
+                            grid: { color: 'rgba(51, 65, 85, 0.3)' },
+                            ticks: {
+                                color: '#64748b',
+                                font: { size: 11 },
+                                callback: function(value) { return '$' + value; }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function setChartMetric(metric) {
+            state.chartMetric = metric;
+
+            // Update button styles
+            document.getElementById('btnMetricBoth').className = metric === 'both' ? 'px-2.5 py-1 rounded-lg bg-coffee-600 text-white transition' : 'px-2.5 py-1 rounded-lg text-slate-400 hover:text-slate-200 transition';
+            document.getElementById('btnMetricArabica').className = metric === 'arabica' ? 'px-2.5 py-1 rounded-lg bg-coffee-600 text-white transition' : 'px-2.5 py-1 rounded-lg text-slate-400 hover:text-slate-200 transition';
+            document.getElementById('btnMetricRobusta').className = metric === 'robusta' ? 'px-2.5 py-1 rounded-lg bg-coffee-600 text-white transition' : 'px-2.5 py-1 rounded-lg text-slate-400 hover:text-slate-200 transition';
+
+            if (!priceChart) return;
+
+            if (metric === 'both') {
+                priceChart.data.datasets[0].hidden = false;
+                priceChart.data.datasets[1].hidden = false;
+            } else if (metric === 'arabica') {
+                priceChart.data.datasets[0].hidden = false;
+                priceChart.data.datasets[1].hidden = true;
+            } else if (metric === 'robusta') {
+                priceChart.data.datasets[0].hidden = true;
+                priceChart.data.datasets[1].hidden = false;
+            }
+            priceChart.update();
+        }
+
+        function setChartRange(range) {
+            state.chartRange = range;
+            const btns = document.querySelectorAll('.chart-time-btn');
+            btns.forEach(btn => {
+                if (btn.innerText === range || (range==='1D' && btn.innerText==='日') || (range==='1W' && btn.innerText==='週') || (range==='1M' && btn.innerText==='月') || (range==='1Y' && btn.innerText==='年')) {
+                    btn.className = 'chart-time-btn active px-2 py-1 rounded-lg bg-slate-800 text-amber-400';
+                } else {
+                    btn.className = 'chart-time-btn px-2 py-1 rounded-lg text-slate-400 hover:text-white';
+                }
+            });
+
+            // Re-simulate chart data based on timeframe
+            if (priceChart) {
+                const points = range === '1D' ? 12 : (range === '1W' ? 7 : (range === '1M' ? 30 : 52));
+                const newLabels = [];
+                const newArabica = [];
+                const newRobusta = [];
+
+                let baseA = (state.arabicaCentsLb * 0.01) / 0.45359237;
+                let baseR = state.robustaUsdTon / 1000;
+
+                for (let i = points; i >= 0; i--) {
+                    newLabels.push(range === '1D' ? `${24 - (i*2)}:00` : `P${points-i}`);
+                    newArabica.push(+(baseA + (Math.sin(i/2)*0.4) + (Math.random()-0.5)*0.2).toFixed(2));
+                    newRobusta.push(+(baseR + (Math.cos(i/3)*0.3) + (Math.random()-0.5)*0.2).toFixed(2));
+                }
+
+                priceChart.data.labels = newLabels;
+                priceChart.data.datasets[0].data = newArabica;
+                priceChart.data.datasets[1].data = newRobusta;
+                priceChart.update();
+            }
+        }
+
+        // Modal Handlers
+        function openAiModal() {
+            document.getElementById('aiModal').classList.remove('hidden');
+        }
+
+        function closeAiModal() {
+            document.getElementById('aiModal').classList.add('hidden');
+        }
+
+        // Exponential Backoff API Call to Gemini with Search Grounding
+        async function fetchWithBackoff(url, options, maxRetries = 5) {
+            let delay = 1000;
+            for (let i = 0; i < maxRetries; i++) {
+                try {
+                    const response = await fetch(url, options);
+                    if (response.ok) {
+                        return await response.json();
+                    }
+                } catch (err) {
+                    // Retry silently
+                }
+                await new Promise(resolve => setTimeout(resolve, delay));
+                delay *= 2;
+            }
+            throw new Error("無法連接 AI 市場分析伺服器，請稍後再試。");
+        }
+
+        async function generateAiReport() {
+            const container = document.getElementById('aiReportContainer');
+            const btn = document.getElementById('fetchAiBtn');
+            const sourcesDiv = document.getElementById('groundingSources');
+
+            btn.disabled = true;
+            btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i><span>分析市場數據中...</span>`;
+            container.innerHTML = `
+                <div class="flex flex-col items-center justify-center py-12 space-y-3">
+                    <div class="w-8 h-8 border-2 border-amber-500 border-t-transparent rounded-full animate-spin"></div>
+                    <p class="text-xs text-slate-400">正在搜尋全球生豆市場、巴西氣候與 ICE/LIFFE 期貨最新新聞...</p>
+                </div>
+            `;
+            sourcesDiv.innerHTML = '';
+
+            const systemPrompt = "你是一位國際咖啡生豆期貨貿易分析師。請用繁體中文，針對 Arabica (KC) 與 Robusta (RC) 生豆的最新市場動態、產量影響因子（氣候、塞港、EUDR法案）進行精簡且專業的簡報。結構要包含：1. 今日市場焦點 2. 產區氣候與供給分析 3. 烘豆商採購建議。點列顯示，條理分明。";
+            const userQuery = `請查詢目前最新的阿拉比卡 (Arabica) 與羅布斯塔 (Robusta) 生豆價格趨勢、期貨走勢以及近期全球咖啡生豆市場重點新聞簡報。當前系統阿拉伯卡參考價格約 ${state.arabicaCentsLb.toFixed(1)} 美分/磅，羅布斯塔約 ${Math.round(state.robustaUsdTon)} 美元/噸。`;
+
+            const payload = {
+                contents: [{ parts: [{ text: userQuery }] }],
+                systemInstruction: { parts: [{ text: systemPrompt }] },
+                tools: [{ "google_search": {} }]
+            };
+
+            const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+
+            try {
+                const result = await fetchWithBackoff(endpoint, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                const text = result.candidates?.[0]?.content?.parts?.[0]?.text;
+                const sources = result.candidates?.[0]?.groundingMetadata?.groundingAttributions?.map(a => ({
+                    uri: a.web?.uri,
+                    title: a.web?.title
+                })).filter(s => s.uri && s.title) || [];
+
+                if (text) {
+                    // Format basic markdown elements into HTML
+                    let formatted = text
+                        .replace(/\*\*(.*?)\*\*/g, '<strong class="text-amber-300 font-bold">$1</strong>')
+                        .replace(/### (.*?)\n/g, '<h4 class="font-bold text-slate-200 mt-3 mb-1 text-sm border-b border-slate-800 pb-1">$1</h4>')
+                        .replace(/\n\* /g, '<br>• ')
+                        .replace(/\n- /g, '<br>• ')
+                        .replace(/\n/g, '<br>');
+
+                    container.innerHTML = `<div class="bg-slate-950 p-4 rounded-xl border border-slate-800 font-sans leading-relaxed text-slate-300 space-y-2">${formatted}</div>`;
+
+                    if (sources.length > 0) {
+                        let sourcesHtml = '<span class="text-slate-400 font-medium">資料來源: </span>';
+                        sourcesHtml += sources.slice(0, 3).map(s => `<a href="${s.uri}" target="_blank" class="text-amber-400 hover:underline mr-2 text-[10px]">${s.title.length > 20 ? s.title.substring(0,20)+'...' : s.title}</a>`).join('');
+                        sourcesDiv.innerHTML = sourcesHtml;
+                    }
+                } else {
+                    container.innerHTML = `<p class="text-rose-400">分析生成失敗，請再試一次。</p>`;
+                }
+            } catch (err) {
+                container.innerHTML = `<p class="text-rose-400 text-center py-6">${err.message || "發生未知錯誤"}</p>`;
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = `<i class="fa-solid fa-magnifying-glass-chart"></i><span>重新抓取簡報</span>`;
+            }
+        }
+    </script>
+</body>
+</html>
+
